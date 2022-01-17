@@ -18,7 +18,6 @@ mutation add_notification_public(
       sent_at: $sent_at # 送信日時
       content: $content # 送信内容
       type: 0 # 0: public（手動通知）, 1: private（自動通知）
-      read: false # false: unread, true: read
     }
   ) {
     id # notifications table pk
@@ -29,7 +28,6 @@ mutation add_notification_public(
       name # 送信者名
     }
     type # 通知タイプ（手動：０，自動：１）
-    read # false: unread, true: read
   }
 }
 ```
@@ -48,33 +46,26 @@ mutation add_notification_public(
         name: String # 送信者名
       }
       type: Int # 通知タイプ（手動：０，自動：１）
-      read: Boolean # false: unread, true: read
     }
   }
 }
 ```
 
-## `update_notification_public($notification_id, $modified_by, $modified_at, $content, $read)`
+## `update_notification_public($notification_id, $read_by)`
 
-【管理画面】手動お知らせ更新（送信）
+【アプリ用】手動お知らせ更新（送信）
 
 ### Query
 
 ```graphql
 mutation update_notification_public (
   $notification_id: Int! # notifications table pk
-  $modified_by: Int # 修正者ID
-  $modified_at: date # 修正日時
-  $content: String! # 通知内容
-  $read: Boolean # false: unread, true: read
+  $read_by: jsonb! # reader's ID
 ) {
   update_notifications_by_pk (
     pk_columns: { id: $notification_id } # notifications table pk
-    _set: {
-      modified_by: $modified_by, # 修正者ID
-      modified_at: $modified_at, # 修正日時
-      content: $content # 通知内容
-      read: $read
+    _append: {
+      readers: $read_by
     }
   ) {
     id # notifications table pk
@@ -84,13 +75,8 @@ mutation update_notification_public (
       id # 管理者ID (users table pk)
       name # 送信者名
     }
-    modified_at # 修正日時
-    modifier {
-      id # 修正者ID
-      name # 修正者名
-    }
     type # 通知タイプ（手動：０，自動：１） 0: public, 1: private
-    read # false: unread, true: read
+    readers # Array of readers
   }
 }
 ```
@@ -108,28 +94,28 @@ mutation update_notification_public (
         id: Int # 管理者ID (users table pk)
         name: String # 送信者名
       }
-      modified_at: date # 修正日時
-      modifier: {
-        id: Int # 修正者ID
-        name: String # 修正者名
-      }
       type: Int # 通知タイプ（手動：０，自動：１）
-      read: Boolean # false: unread, true: read
+      readers: jsonb # array of readers
     }
   }
 }
 ```
 
-## `get_notification_public()`
+## `get_notification_public($user_id)`
 
-【管理画面】手動お知らせ履歴取得
+【管理画面】, 【アプリ用】手動お知らせ履歴取得
 
 ### Query
 
 ```graphql
-get_notification_public () {
-  notifications (
-    where: { type: { _eq: 0 } }
+get_notification_public (
+  $user_id: jsonb # reader's ID
+) {
+  read: notifications (
+    where: {
+      type: { _eq: 0 },
+      readers: { _contains: $user_id}
+    }
   ) {
     id # notifications table pk
     content # 通知内容
@@ -139,7 +125,21 @@ get_notification_public () {
       name # 送信者名
     }
     type # 通知タイプ（手動：０，自動：１）
-    read # false: unread, true: read
+  }
+  unread: notifications (
+    where: {
+      type: { _eq: 0 },
+      _not: { readers: { _contains: $user_id}}
+    }
+  ) {
+    id # notifications table pk
+    content # 通知内容
+    sent_at # 送信日時
+    sender {
+      id # 管理者ID (users table pk)
+      name # 送信者名
+    }
+    type # 通知タイプ（手動：０，自動：１）
   }
 }
 ```
@@ -149,7 +149,7 @@ get_notification_public () {
 ```graphql
 {
   data: {
-    notifications: [
+    read: [
       {
         id: Int # notifications table pk
         content: String # 通知内容
@@ -158,20 +158,87 @@ get_notification_public () {
           id: Int # 管理者ID (users table pk)
           name: String # 送信者名
         }
-        modified_at: date # 修正日時
-        modifier: {
-          id: Int # 修正者ID
-          name: String # 修正者名
+        type: Int # 通知タイプ（手動：０，自動：１） 0: public, 1: private
+      }
+    ]
+    unread: [
+      {
+        id: Int # notifications table pk
+        content: String # 通知内容
+        sent_at: date # 送信日時
+        sender: {
+          id: Int # 管理者ID (users table pk)
+          name: String # 送信者名
         }
         type: Int # 通知タイプ（手動：０，自動：１） 0: public, 1: private
-      	read: Boolean # false: unread, true: read
       }
     ]
   }
 }
 ```
 
-## `get_notification_private($recipient_id)`
+## `add_notification_private($recipient_id, $sent_by, $sent_at, $content)`
+
+【管理画面】【アプリ用】自動お知らせ作成（送信)
+
+### Query
+
+```graphql
+mutation add_notification_private (
+  $recipient_id: Int! # ユーザーID
+  $sent_by: Int # 管理者ID (users table pk)
+  $sent_at: date! # 送信日時
+  $content: String! # 送信内容
+) {
+  insert_notifications_one (
+    object: {
+      sent_by: $sent_by # 管理者ID (users table pk)
+      sent_at: $sent_at # 送信日時
+      content: $content # 送信内容
+      recipient: $recipient_id # ユーザーID
+      type: 1 # 0: public（手動通知）, 1: private（自動通知）
+    }
+  ) {
+    id # notifications table pk
+    recipient {
+      id # 受信者ID
+      name # 受信者名
+    }
+    sender {
+      id # 管理者ID (users table pk)
+      name # 送信者名
+    }
+    content # 通知内容
+    sent_at # 送信日時
+    type # 通知タイプ（手動：０，自動：１）
+  }
+}
+```
+
+### Response
+
+```graphql
+{
+  data: {
+    insert_notifications_one: {
+      id: Int # notifications table pk
+      recipient: {
+        id: Int # 受信者ID
+        name: String # 受信者名
+      }
+      sender: {
+        id: Int # 管理者ID (users table pk)
+        name: String # 送信者名
+      }
+      content: String # 通知内容
+      sent_at: date # 送信日時
+      type: Int # 通知タイプ（手動：０，自動：１）
+    }
+  }
+}
+```
+
+## `get_notification_private($recipient_id, $date)`
 
 【アプリ用】自動お知らせ履歴取得
 
@@ -180,9 +247,13 @@ get_notification_public () {
 ```graphql
 get_notification_private (
   $recipient_id: Int # ユーザーID
+  $date: date # limit date
 ) {
   notifications (
-    where: { recipient_id: { _eq: $recipient_id } }
+    where: {
+      recipient_id: { _eq: $recipient_id },
+      sent_at: { _gt: $date }
+    }
   ) {
     id # notifications table pk
     recipient {
@@ -446,7 +517,8 @@ list_order_by
 ```graphql
 {
   data_field: order
-} # field for sorting
+} 
+# field for sorting
 # example
 # { id: asc, name: desc }
 ```
@@ -615,7 +687,7 @@ mutation remove_favorite_item(
 
 # カート管理
 
-## `add_cart_item($user_id, $item_id, $item_amount, $order_date, $sold_by)`
+## `add_cart_item($user_id, $item_id, $item_amount, $delivery_date, $sold_by)`
 
 【アプリ】カートに商品追加
 
@@ -625,17 +697,15 @@ mutation remove_favorite_item(
 mutation add_cart_item(
   $user_id: Int! # ユーザーID
   $item_id: Int! # 商品ID
-  $item_amount: Float! # 商品数
-  $order_date: date! # 追加日時
-  $sold_by: Int!
+  $item_amount: Int! # 商品数
+  $delibery_date: date! # 配達日
 ) {
   insert_item_cart_one(
     object: {
       user_id: $user_id # ユーザーID
       item_id: $item_id # 商品ID
       item_amount: $item_amount # 商品数
-      order_date: $order_date # 追加日時
-      sold_by: $sold_by # 売り手のID
+      delibery_date: $delibary_date # 追加日時
     }
   ) {
     id
@@ -643,13 +713,13 @@ mutation add_cart_item(
     item {
       id # 商品ID
       name # 商品名
+      sales_unit # unit
       inventories {
         unit_price # 単価
       }
     }
     item_amount # 商品数
-    order_date # 追加日時
-    sold_by # 売り手のID
+    delibery_date # 配達日
   }
 }
 ```
@@ -669,9 +739,8 @@ mutation add_cart_item(
           unit_price: Int # 単価
         }
       }
-      item_amount: Float # 商品数
-      order_date: date # 追加日時
-      sold_by: Int # 売り手のID
+      item_amount: Int # 商品数
+      delivery_date: date # 配達日
     }
   }
 }
@@ -722,6 +791,9 @@ list_cart_items_by_user (
   item_cart (
     where: {
       user_id: {_eq: $user_id}
+    },
+    order_by: {
+      delivery_date: 'desc'
     }
   ) {
     id # item-cart table pk
@@ -730,13 +802,13 @@ list_cart_items_by_user (
       id # 商品ID
       name # 商品名
       images # 画像URL
+      sales_unit # unit
       inventories {
         unit_price # 単価
       }
     }
     item_amount # 商品数
-    order_date # カートに商品を追加した日時
-    sold_by # 売り手のID
+    delivery_date # 配達日
   }
 }
 ```
@@ -749,18 +821,18 @@ list_cart_items_by_user (
     item_cart: [
       {
         id: Int # item-cart table pk
-        user_id: Int who orderd items
+        user_id: Int # who orderd items
         items: {
           id: Int # 商品ID
           name: String # 商品名
           images: [String] # 画像URL
+          sales_unit: String # unit
           inventories: {
             unit_price: Int # 単価
           }
         }
-        item_amount: Float # 商品数
-        order_date: date # カートに商品を追加した日時
-        sold_by: Int # 売り手のID
+        item_amount: Int # 商品数
+        delivery_date: date # カートに商品を追加した日時
       }
     ]
   }
@@ -1392,7 +1464,7 @@ mutation remove_top_content(
 
 # お問い合わせ
 
-## `send_email($send_by, $name, $body, $images)`
+## `send_email($send_by, $name, $body, $images, $tel)`
 
 【アプリ用】お問い合わせメール送信
 
@@ -1403,10 +1475,17 @@ mutation send_email(
   $send_by: String! # メールアドレス
   $name: String! # お名前
   $body: String! # 問い合わせ内容
-  $images: Jsonb! # s3 bucket image path array
+  $images: jsonb! # s3 bucket image path array
+  $tel: String! # phone number
 ) {
   insert_contacts_one(
-    object: { name: $name, body: $body, send_by: $send_by, images: $images }
+    object: {
+      name: $name,
+      body: $body,
+      send_by: $send_by,
+      images: $images,
+      tel: $tel
+    }
   ) {
     id
     status
@@ -1421,6 +1500,44 @@ mutation send_email(
   data: {
     insert_contacts_one: {
       id: Int
+      status: Boolean
+    }
+  }
+}
+```
+
+## `update_contact($contact_id, $status)`
+
+Update contact status.
+
+### Query
+
+```graphql
+mutation update_contact (
+  $contact_id: Int!
+  $status: Boolean!
+) {
+  update_contacts_by_pk (
+    pk_columns: {
+      id: $contact_id
+    }
+    _set: {
+      status: $status
+    }
+  ) {
+      id
+      status
+    }
+}
+```
+
+### Response
+
+```graphql
+{
+  data: {
+    update_contacts_by_pk: {
+      id: Int,
       status: Boolean
     }
   }
