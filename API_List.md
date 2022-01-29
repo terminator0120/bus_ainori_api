@@ -60,7 +60,7 @@ mutation add_notification_public(
 ```graphql
 mutation update_notification_public (
   $notification_id: Int! # notifications table pk
-  $read_by: jsonb! # reader's ID
+  $read_by: Int! # reader's ID
 ) {
   update_notifications_by_pk (
     pk_columns: { id: $notification_id } # notifications table pk
@@ -195,7 +195,7 @@ mutation add_notification_private (
       sent_by: $sent_by # 管理者ID (users table pk)
       sent_at: $sent_at # 送信日時
       content: $content # 送信内容
-      recipient: $recipient_id # ユーザーID
+      recipient_id: $recipient_id # ユーザーID
       type: 1 # 0: public（手動通知）, 1: private（自動通知）
     }
   ) {
@@ -422,14 +422,14 @@ searh_items_by_keyword (
 
 ### Data type
 
-list_order_by
+items_order_by
 
 ```graphql
 {
-  data_field: order
+  < field name >: < order >
 } # field for sorting
 # example
-# { id: asc, name: desc }
+# { "id": "asc" }
 ```
 
 ### Query
@@ -442,7 +442,7 @@ list_items_filter_by_condition (
   $address: jsonb # 産地
   $price_lower: Int # 価格帯（低）
   $price_upper: Int # 価格帯（高）
-  $order_by: list_order_by # 並べ替え
+  $order_by: [items_order_by!] # 並べ替え
 ) {
   items (
     where: {
@@ -512,11 +512,11 @@ list_items_filter_by_condition (
 
 ### Data type
 
-list_order_by
+item_favorite_order_by
 
 ```graphql
 {
-  data_field: order
+  < field name >: < order >
 } 
 # field for sorting
 # example
@@ -528,7 +528,7 @@ list_order_by
 ```graphql
 list_favorite_items_by_user (
   $user_id: Int! # ユーザーID  
-  $order_by: list_order_by # 並べ替え
+  $order_by: [item_favorite_order_by!] # 並べ替え
 ) {
   item_favorite (
     where: {
@@ -698,14 +698,14 @@ mutation add_cart_item(
   $user_id: Int! # ユーザーID
   $item_id: Int! # 商品ID
   $item_amount: Int! # 商品数
-  $delibery_date: date! # 配達日
+  $delivery_date: date! # 配達日
 ) {
   insert_item_cart_one(
     object: {
       user_id: $user_id # ユーザーID
       item_id: $item_id # 商品ID
       item_amount: $item_amount # 商品数
-      delibery_date: $delibary_date # 追加日時
+      delivery_date: $delivery_date # 追加日時
     }
   ) {
     id
@@ -719,7 +719,7 @@ mutation add_cart_item(
       }
     }
     item_amount # 商品数
-    delibery_date # 配達日
+    delivery_date # 配達日
   }
 }
 ```
@@ -746,7 +746,7 @@ mutation add_cart_item(
 }
 ```
 
-## `remove_cart_item($user_id, $item_id)`
+## `remove_cart_item($cart_id)`
 
 【アプリ用】カート内の商品削除
 
@@ -754,13 +754,11 @@ mutation add_cart_item(
 
 ```graphql
 mutation remove_cart_item(
-  $user_id: Int! # ユーザーID
-  $item_id: Int! # 商品ID
+  $cart_id: Int! # PK of `item_cart` table
 ) {
   delete_item_cart(
     where: {
-      user_id: { _eq: $user_id }
-      item_id: { _eq: $item_id } # 商品ID
+      id: { _eq: $cart_id } # PK of `item_cart` table
     }
   ) {
     affected_rows
@@ -793,12 +791,12 @@ list_cart_items_by_user (
       user_id: {_eq: $user_id}
     },
     order_by: {
-      delivery_date: 'desc'
+      delivery_date: desc
     }
   ) {
     id # item-cart table pk
     user_id
-    items {
+    item {
       id # 商品ID
       name # 商品名
       images # 画像URL
@@ -822,7 +820,7 @@ list_cart_items_by_user (
       {
         id: Int # item-cart table pk
         user_id: Int # who orderd items
-        items: {
+        item: {
           id: Int # 商品ID
           name: String # 商品名
           images: [String] # 画像URL
@@ -841,7 +839,7 @@ list_cart_items_by_user (
 
 # ピックアップ
 
-## `add_pickup($title, $image, $start_at, $btn_url, $btn_txt, $item_ids)`
+## `add_pickup($title, $images, $start_at, $btn_url, $btn_txt, $item_ids)`
 
 【管理画面】ピックアップ登録
 
@@ -863,7 +861,7 @@ item_pickup_insert_input
 mutation add_pickup(
   $title: String! # タイトル
   $summary: String! # 概要
-  $image: String # メイン画像URL
+  $images: jsonb # メイン画像URL
   $start_at: date! # 表示開始日時
   $btn_url: String! # ボタン押下時の遷移先URL
   $btn_txt: String! # ボタンのテキスト
@@ -873,7 +871,7 @@ mutation add_pickup(
     object: {
       title: $title # タイトル
       summary: $summary # 概要
-      image: $image # メイン画像URL
+      images: $images # メイン画像URL
       start_at: $start_at # 表示開始日時
       btn_url: $btn_url # ボタン押下時の遷移先URL
       btn_txt: $btn_txt # ボタンのテキスト
@@ -885,7 +883,7 @@ mutation add_pickup(
     id # pickups table pk
     title # タイトル
     summary # 概要
-    image # メイン画像URL
+    images # メイン画像URL
     start_at # 表示開始日時
     btn_url # ボタン押下時の遷移先URL
     btn_txt # ボタンのテキスト
@@ -905,7 +903,7 @@ mutation add_pickup(
       id: Int # pickups table pk
       title: String # タイトル
       summary: String # 概要
-      image: String # メイン画像URL
+      images: String # メイン画像URL
       start_at: date # 表示開始日時
       btn_url: String # ボタン押下時の遷移先URL
       btn_txt: String # ボタンのテキスト
@@ -937,7 +935,7 @@ get_pickup (
     id # pickups table pk
     title # タイトル
     summary # 概要
-    image # メイン画像URL
+    images # メイン画像URL
     start_at # 表示開始日時
     btn_url # ボタン押下時の遷移先URL
     btn_txt # ボタンのテキスト
@@ -958,7 +956,7 @@ get_pickup (
         id: Int # pickups table pk
         title: String # タイトル
         summary: String # 概要
-        image: String # メイン画像URL
+        images: jsonb # メイン画像URL
         start_at: date # 表示開始日時
         btn_url: String # ボタン押下時の遷移先URL
         btn_txt: String # ボタンのテキスト
@@ -990,7 +988,7 @@ get_current_pickup (
   ) {
     id # pickups table pk
     title # タイトル
-    image # メイン画像URL
+    images # メイン画像URL
     start_at # 表示開始日時
     btn_url # ボタン押下時の遷移先URL
     btn_txt # ボタンのテキスト
@@ -1011,7 +1009,7 @@ get_current_pickup (
         id: Int # pickups table pk
         title: String # タイトル
         summary: String # 概要
-        image: String # メイン画像URL
+        images: jsonb # メイン画像URL
         start_at: date # 表示開始日時
         btn_url: String # ボタン押下時の遷移先URL
         btn_txt: String # ボタンのテキスト
@@ -1026,7 +1024,7 @@ get_current_pickup (
 }
 ```
 
-## `update_pickup($pickup_id, $title, $summary $start_at, $btn_url, $btn_txt, $item_pickups)`
+## `update_pickup($pickup_id, $title, $summary, $images, $start_at, $btn_url, $btn_txt, $item_pickups)`
 
 【管理画面】ピックアップ更新
 
@@ -1050,7 +1048,7 @@ mutation update_pickup (
   $pickup_id: Int! # pickups table pk
   $title: String! # タイトル
   $summary: String! # 概要
-  $image: String # メイン画像URL
+  $images: jsonb # メイン画像URL
   $start_at: date! # 表示開始日時
   $btn_url: String! # ボタン押下時の遷移先URL
   $btn_txt: String! # ボタンのテキスト
@@ -1075,7 +1073,7 @@ mutation update_pickup (
     _set: {
       title: $title # タイトル
       summary: $summary # 概要
-      image: $image # メイン画像URL
+      images: $images # メイン画像URL
       start_at: $start_at # 表示開始日時
       btn_url: $btn_url # ボタン押下時の遷移先URL
       btn_txt: $btn_txt # ボタンのテキスト
@@ -1084,7 +1082,7 @@ mutation update_pickup (
       id # pickups table pk
       title # タイトル
       summary # 概要
-      image # メイン画像URL
+      images # メイン画像URL
       start_at # 表示開始日時
       btn_url # ボタン押下時の遷移先URL
       btn_txt # ボタンのテキスト
@@ -1110,7 +1108,7 @@ mutation update_pickup (
       id: Int # pickups table pk
       title: String # タイトル
       summary: String # 概要
-      image: String # メイン画像URL
+      images: jsonb # メイン画像URL
       start_at: date # 表示開始日時
       btn_url: String # ボタン押下時の遷移先URL
       btn_txt: String # ボタンのテキスト
@@ -1168,7 +1166,7 @@ mutation remove_pickup(
 
 # Top
 
-## `add_top_content($image, $text, $action, $item_id, $pickup_id, $url)`
+## `add_top_content($images, $text, $action, $item_id, $pickup_id, $url)`
 
 【管理画面】トップコンテンツ追加
 
@@ -1176,7 +1174,7 @@ mutation remove_pickup(
 
 ```graphql
 mutation add_top_content(
-  $image: String # 画像URL
+  $images: jsonb # 画像URL
   $text: String # テキスト
   $action: Int! # 0: native view - item, 1: native view - pickup, 2: web view
   $item_id: Int # action=0（Nativeページの商品詳細ページを表示）の場合の遷移先商品ID
@@ -1185,7 +1183,7 @@ mutation add_top_content(
 ) {
   insert_top_contents_one(
     object: {
-      image: $image # 画像URL
+      images: $images # 画像URL
       text: $text # テキスト
       action: $action # 0: native view - item, 1: native view - pickup, 2: web view
       item_id: $item_id # 商品ID
@@ -1194,7 +1192,7 @@ mutation add_top_content(
     }
   ) {
     id # top_contents table pk
-    image # 画像URL
+    images # 画像URL
     text # テキスト
     action # 0: native view - item, 1: native view - pickup, 2: web view
     item {
@@ -1217,7 +1215,7 @@ mutation add_top_content(
   data: {
     insert_top_contents_one: {
       id: Int, # top_contents table pk
-      image: String, # 画像URL
+      images: jsonb, # 画像URL
       text: String, # テキスト
       action: Int, # 0: native view - item, 1: native view - pickup, 2: web view
       item: {
@@ -1250,9 +1248,9 @@ get_top_content (
     }
   ) {
     id # top_contents table pk
-    image # 画像URL
+    images # 画像URL
     text # テキスト
-    action 0: native view - item, 1: native view - pickup, 2: web view
+    action # 0: native view - item, 1: native view - pickup, 2: web view
     item {
       id # action=0（Nativeページの商品詳細ページを表示）の場合の遷移先商品ID
       name # 商品名
@@ -1274,9 +1272,9 @@ get_top_content (
     top_contents: [
       {
         id: Int, # top_contents table pk
-        image: String, # 画像URL
+        images: jsonb, # 画像URL
         text: String, # テキスト
-        action: Int, 0: native view - item, 1: native view - pickup, 2: web view
+        action: Int, #0: native view - item, 1: native view - pickup, 2: web view
         item: {
           id: Int, # action=0（Nativeページの商品詳細ページを表示）の場合の遷移先商品ID
           name: String # name of item
@@ -1318,7 +1316,7 @@ get_all_top_contents (
     order_by: $order_by
   ) {
     id
-    image
+    images
     text
     action
     item {
@@ -1342,7 +1340,7 @@ get_all_top_contents (
     top_contents: [
       {
         id: Int,
-        image: String,
+        images: jsonb,
         text: String,
         action: Int,
         item: {
@@ -1360,7 +1358,7 @@ get_all_top_contents (
 }
 ```
 
-## `update_top_content($content_id, $image, $text, $action, $item_id, $pickup_id, $url)`
+## `update_top_content($content_id, $images, $text, $action, $item_id, $pickup_id, $url)`
 
 【管理画面用】トップコンテンツ更新
 
@@ -1369,7 +1367,7 @@ get_all_top_contents (
 ```graphql
 mutation update_top_content(
   $content_id: Int! # top_contents table pk
-  $image: String # 画像URL
+  $images: jsonb # 画像URL
   $text: String # テキスト
   $action: Int! # 0: native view - item, 1: native view - pickup, 2: web view
   $item_id: Int # 商品ID
@@ -1381,7 +1379,7 @@ mutation update_top_content(
       id: $content_id
     }
     _set: {
-      image: $image # 画像URL
+      images: $images # 画像URL
       text: $text # テキスト
       action: $action # 0: native view - item, 1: native view - pickup, 2: web view
       item_id: $item_id # action=0（Nativeページの商品詳細ページを表示）の場合の遷移先商品ID
@@ -1390,9 +1388,9 @@ mutation update_top_content(
     }
   ) {
     id # top_contents table pk
-    image # 画像URL
+    images # 画像URL
     text # テキスト
-    action # # 0: native view - item, 1: native view - pickup, 2: web view
+    action # 0: native view - item, 1: native view - pickup, 2: web view
     item {
       id # 商品ID
       name # 商品名
@@ -1413,7 +1411,7 @@ mutation update_top_content(
   data: {
     update_top_contents_by_pk: {
       id: Int, # top_contents table pk
-      image: String, # 画像URL
+      images: jsonb, # 画像URL
       text: String, # テキスト
       action: Int, # 0: native view - item, 1: native view - pickup, 2: web view
       item: {
