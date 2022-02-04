@@ -416,7 +416,7 @@ searh_items_by_keyword (
 
 # 条件で絞り込み検索
 
-## `list_items_filter_by_condition($keyword, $category, $delivery_date, $address, $price_lower, $price_upper, $order_by)`
+## `list_items_filter_by_condition($keyword, $category, $delivery_date, $address, $price_lower, $price_upper, $characteristic_id, $order_by)`
 
 【アプリ用】条件で絞り込み検索
 
@@ -442,6 +442,7 @@ list_items_filter_by_condition (
   $address: jsonb # 産地
   $price_lower: Int # 価格帯（低）
   $price_upper: Int # 価格帯（高）
+  $characteristic_id: Int
   $order_by: [items_order_by!] # 並べ替え
 ) {
   items (
@@ -451,6 +452,7 @@ list_items_filter_by_condition (
       producer: {
         address: { _contains: $address } # 産地
       }
+      characteristic_id: { _eq: $characteristic_id }
       inventories: {
         ship_date: { _eq: $delivery_date } # 到着希望日
         unit_price: {
@@ -472,6 +474,11 @@ list_items_filter_by_condition (
     }    
     item_favorites {
       user_id # このアイテムが好きなuser_id
+    }
+    characteristic {
+      id
+      name
+      type
     }
   }
 }
@@ -498,6 +505,11 @@ list_items_filter_by_condition (
             user_id: Int # このアイテムが好きなuser_id
           }
         ]
+        characteristic: {
+          id: Int
+          name: String
+          type: String
+        }
       }
     ]
   }
@@ -546,6 +558,11 @@ list_favorite_items_by_user (
       producer {
         name # 生産者名
       }
+      characteristic {
+        id
+        name
+        type
+      }
     }
   }
 }
@@ -560,12 +577,17 @@ list_favorite_items_by_user (
       {
         id: Int # 商品ID
         name: String # 商品名
-        images: [String] # 画像URL
+        images: jsonb # 画像URL
         inventories: {
           unit_price: Int # 単価
         }
         producer: {
           name: String # 生産者名
+        }
+        characteristic: {
+          id: Int
+          name: String
+          type: String
         }
       }
     ]
@@ -717,6 +739,12 @@ mutation add_cart_item(
       inventories {
         unit_price # 単価
       }
+      characteristic {
+        id
+        name
+        type
+      }
+      
     }
     item_amount # 商品数
     delivery_date # 配達日
@@ -737,6 +765,11 @@ mutation add_cart_item(
         name: String # 商品名
         inventories: {
           unit_price: Int # 単価
+        }
+        characteristic: {
+          id: Int
+          name: String
+          type: String
         }
       }
       item_amount: Int # 商品数
@@ -804,6 +837,11 @@ list_cart_items_by_user (
       inventories {
         unit_price # 単価
       }
+      characteristic {
+        id
+        name
+        type
+      }
     }
     item_amount # 商品数
     delivery_date # 配達日
@@ -827,6 +865,11 @@ list_cart_items_by_user (
           sales_unit: String # unit
           inventories: {
             unit_price: Int # 単価
+          }
+          characteristic: {
+            id: Int
+            name: String
+            type: String
           }
         }
         item_amount: Int # 商品数
@@ -940,7 +983,20 @@ get_pickup (
     btn_url # ボタン押下時の遷移先URL
     btn_txt # ボタンのテキスト
     item_pickups {
-      item_id # 対象商品
+      item {
+        id # 商品ID
+        name # 商品名
+        images # 画像URL
+        sales_unit # unit
+        inventories {
+          unit_price # 単価
+        }
+        characteristic {
+          id
+          name
+          type
+        }
+      }
     }
   }
 }
@@ -962,7 +1018,20 @@ get_pickup (
         btn_txt: String # ボタンのテキスト
         item_pickups: [
           {
-            item_id: Int # 対象商品
+            item: {
+              id: Int # 商品ID
+              name: String # 商品名
+              images: jsonb # 画像URL
+              sales_unit: String # unit
+              inventories: {
+                unit_price: Int # 単価
+              }
+              characteristic: {
+                id: Int
+                name: String
+                type: String
+              }
+            }
           }
         ]
       }
@@ -993,7 +1062,20 @@ get_current_pickup (
     btn_url # ボタン押下時の遷移先URL
     btn_txt # ボタンのテキスト
     item_pickups {
-      item_id # 商品ID
+      item {
+        id # 商品ID
+        name # 商品名
+        images # 画像URL
+        sales_unit # unit
+        inventories {
+          unit_price # 単価
+        }
+        characteristic {
+          id
+          name
+          type
+        }
+      }
     }
   }
 }
@@ -1015,7 +1097,20 @@ get_current_pickup (
         btn_txt: String # ボタンのテキスト
         item_pickups: [
           {
-            item_id: Int # 商品ID
+            item: {
+              id: Int # 商品ID
+              name: String # 商品名
+              images: jsonb # 画像URL
+              sales_unit: String # unit
+              inventories: {
+                unit_price: Int # 単価
+              }
+              characteristic: {
+                id: Int
+                name: String
+                type: String
+              }
+            }
           }
         ]
       }
@@ -1537,6 +1632,42 @@ mutation update_contact (
     update_contacts_by_pk: {
       id: Int,
       status: Boolean
+    }
+  }
+}
+```
+
+## `get_characteristic_list($characteristic_id)`
+
+Get list of characteristics
+
+### Query
+
+```graphql
+get_characteristic_list (
+  $characteristic_id: Int 
+) {
+  characteristics (
+    where: {
+      id: { _eq: $characteristic_id }
+    }
+  ) {
+      id
+      name
+      type
+    }
+}
+```
+
+### Response
+
+```graphql
+{
+  data: {
+    characteristics: {
+      id: Int,
+      name: String,
+      type: String
     }
   }
 }
