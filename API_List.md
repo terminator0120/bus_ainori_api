@@ -1,6 +1,6 @@
 # お知らせ
 
-## `add_notification_public($content, $sent_at, $sent_by)`
+## `add_notification_public($content, $sent_at, $sent_by, $icon)`
 
 【管理画面】手動お知らせ作成（送信）
 
@@ -11,17 +11,20 @@ mutation add_notification_public(
   $sent_by: Int! # 管理者ID (users table pk)
   $sent_at: date! # 送信日時
   $content: String! # 送信内容
+  $icon: String
 ) {
   insert_notifications_one(
     object: {
       sent_by: $sent_by # 管理者ID (users table pk)
       sent_at: $sent_at # 送信日時
       content: $content # 送信内容
+      icon: $icon
       type: 0 # 0: public（手動通知）, 1: private（自動通知）
     }
   ) {
     id # notifications table pk
     content # 通知内容
+    icon
     sent_at # 送信日時
     sender {
       id # 管理者ID (users table pk) (admin)
@@ -40,6 +43,7 @@ mutation add_notification_public(
     insert_nofitications_one: {
       id: Int # notifications table pk
       content: String # 通知内容
+      icon: String
       sent_at: date # 送信日時
       sender: {
         id: Int # 管理者ID (users table pk)
@@ -60,7 +64,7 @@ mutation add_notification_public(
 ```graphql
 mutation update_notification_public (
   $notification_id: Int! # notifications table pk
-  $read_by: Int! # reader's ID
+  $read_by: jsonb! # reader's ID
 ) {
   update_notifications_by_pk (
     pk_columns: { id: $notification_id } # notifications table pk
@@ -119,6 +123,7 @@ get_notification_public (
   ) {
     id # notifications table pk
     content # 通知内容
+    icon
     sent_at # 送信日時
     sender {
       id # 管理者ID (users table pk)
@@ -134,6 +139,7 @@ get_notification_public (
   ) {
     id # notifications table pk
     content # 通知内容
+    icon
     sent_at # 送信日時
     sender {
       id # 管理者ID (users table pk)
@@ -153,6 +159,7 @@ get_notification_public (
       {
         id: Int # notifications table pk
         content: String # 通知内容
+        icon: String
         sent_at: date # 送信日時
         sender: {
           id: Int # 管理者ID (users table pk)
@@ -818,10 +825,12 @@ mutation remove_cart_item(
 ```graphql
 list_cart_items_by_user (
   $user_id: Int! # ユーザーID
+  $delivery_date: date
 ) {
   item_cart (
     where: {
-      user_id: {_eq: $user_id}
+      user_id: {_eq: $user_id},
+      delivery_date: {_eq: $delivery_date}
     },
     order_by: {
       delivery_date: desc
@@ -841,6 +850,12 @@ list_cart_items_by_user (
         id
         name
         type
+      }
+      producer {
+        name
+        email
+        tel
+        address
       }
     }
     item_amount # 商品数
@@ -870,6 +885,12 @@ list_cart_items_by_user (
             id: Int
             name: String
             type: String
+          }          
+          producer: {
+            name: String
+            email: String
+            tel: String
+            address: jsonb
           }
         }
         item_amount: Int # 商品数
