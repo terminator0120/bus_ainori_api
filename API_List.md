@@ -423,7 +423,7 @@ searh_items_by_keyword (
 
 # 条件で絞り込み検索
 
-## `list_items_filter_by_condition($keyword, $category, $delivery_date, $address, $price_lower, $price_upper, $characteristic_id, $order_by)`
+## `list_items_filter_by_condition($keyword, $category, $ship_date, $address, $price_lower, $price_upper, $characteristic_id, $order_by)`
 
 【アプリ用】条件で絞り込み検索
 
@@ -434,7 +434,7 @@ items_order_by
 ```graphql
 {
   < field name >: < order >
-} # field for sorting
+} # field for sorting 
 # example
 # { "id": "asc" }
 ```
@@ -444,49 +444,52 @@ items_order_by
 ```graphql
 list_items_filter_by_condition (
   $keyword: String # キーワード 例）'%keyword%'
-  $category: Int # カテゴリーID
-  $delivery_date: date # 到着希望日
-  $address: jsonb # 産地
+  $category_id: Int # カテゴリーID
+  $ship_date: date # 到着希望日
+  $address: jsonb # 産地  
   $price_lower: Int # 価格帯（低）
   $price_upper: Int # 価格帯（高）
   $characteristic_id: Int
-  $order_by: [items_order_by!] # 並べ替え
+  $order_by: [inventories_order_by!] # 並べ替え
 ) {
-  items (
+  inventories (
     where: {
-      name: { _like: $keyword } # キーワード
-      category_id: { _eq: $category } # カテゴリーID
-      producer: {
-        address: { _contains: $address } # 産地
+      ship_date: {_eq: $ship_date}
+      unit_price: {
+        _gt: $price_lower # 価格帯（低）
+        _lt: $price_upper # 価格帯（高）
       }
-      characteristic_id: { _eq: $characteristic_id }
-      inventories: {
-        ship_date: { _eq: $delivery_date } # 到着希望日
-        unit_price: {
-          _gt: $price_lower # 価格帯（低）
-          _lt: $price_upper # 価格帯（高）
+      item: {
+        name: {_like: $keyword}
+        category_id: {_eq: $category_id}
+        producer: {
+          address: {_contains: $address}
         }
+        characteristic_id: {_eq: $characteristic_id}
       }
-    }
+    },
     order_by: $order_by # 並べ替え
   ) {
-    id # 商品ID
-    name # 商品名
-    images # 画像URL
-    inventories {
-      unit_price # 単価
+    item {
+      id # 商品ID
+      name # 商品名
+      images # 画像URL
+      producer {
+        name # 生産者名
+      }    
+      item_favorites {
+        user_id # このアイテムが好きなuser_id
+      }
+      characteristic {
+        id
+        name
+        type
+      }
+      tax_rate
     }
-    producer {
-      name # 生産者名
-    }    
-    item_favorites {
-      user_id # このアイテムが好きなuser_id
-    }
-    characteristic {
-      id
-      name
-      type
-    }
+    unit_price # 単価
+    ship_date
+    available_box_count
   }
 }
 ```
@@ -496,27 +499,28 @@ list_items_filter_by_condition (
 ```graphql
 {
   data: {
-    items: [
+    inventories: [
       {
-        id: Int # 商品ID
-        name: String # 商品名
-        images: [String] # 画像URL
-        inventories: {
-          unit_price: Int # 単価
-        }
-        producer: {
-          name: String # 生産者名
-        }
-        item_favorites: [
-          {
+        item: {
+          id: Int # 商品ID
+          name: String # 商品名
+          images: [String] # 画像URL
+          producer {
+            name: String # 生産者名
+          }    
+          item_favorites: {
             user_id: Int # このアイテムが好きなuser_id
           }
-        ]
-        characteristic: {
-          id: Int
-          name: String
-          type: String
+          characteristic: {
+            id: Int
+            name: String
+            type: String
+          }
+          tax_rate: Float
         }
+        unit_price: Int # 単価
+        ship_date: date
+        available_box_count: Int
       }
     ]
   }
@@ -1693,3 +1697,148 @@ get_characteristic_list (
   }
 }
 ```
+
+## `get_buy_history($buyer_shop_id)`
+
+Get buy history of a current user. (buyer_shop_id stands for org_id in users table)
+
+### Query
+
+```graphql
+get_buy_history (
+  $buyer_shop_id: Int! 
+) {
+  sales (
+    where: {
+      buyer_shop_id: { _eq: $buyer_shop_id }
+    }
+  ) {
+    id
+    inventory {
+      item {
+        id # 商品ID
+        name # 商品名
+        images # 画像URL
+        producer {
+          name # 生産者名
+        }    
+        item_favorites {
+          user_id # このアイテムが好きなuser_id
+        }
+        characteristic {
+          id
+          name
+          type
+        }
+        tax_rate
+      }
+      unit_price # 単価
+      ship_date
+      available_box_count
+    }
+    sales_unit_count
+    sales_unit_price
+    status
+    sales_accept_date
+    is_accepted_by_buyer
+    invoice_uuid
+    delivered_by
+    delivered_at
+  }
+}
+```
+
+### Response
+
+```graphql
+{
+  data: {
+    sales: [
+      {
+        id: Int
+        inventory: {
+          item: {
+            id: Int # 商品ID
+            name: String # 商品名
+            images: [String] # 画像URL
+            producer {
+              name: String # 生産者名
+            }    
+            item_favorites: {
+              user_id: Int # このアイテムが好きなuser_id
+            }
+            characteristic: {
+              id: Int
+              name: String
+              type: String
+            }
+            tax_rate: Float
+          }
+          unit_price: Int # 単価
+          ship_date: date
+          available_box_count: Int
+        }
+        sales_unit_count: Int
+        sales_unit_price: Int
+        status: String
+        sales_accept_date: date
+        is_accepted_by_buyer: Boolean
+        invoice_uuid: String
+        delivered_by: Int
+        delivered_at: date
+      }
+    ]
+  }
+}
+```
+
+## `get_invoice($invoice_uuid)`
+
+Get invoice according to `invoide_uuid`
+
+### Query
+
+```graphql
+get_invoice (
+  $invoice_uuid: String 
+) {
+  invoices (
+    where: {
+      uuid: { _eq: $invoice_uuid }
+    }
+  ) {
+    id
+    buyer_shop_id
+    payment_condition
+    status
+    confirmed_at
+    sent_at
+    paid_by
+    paid_at
+    pdf_base64
+    invoice_data
+  }
+}
+```
+
+### Response
+
+```graphql
+{
+  data: {
+    invoices: {
+      id: Int
+      buyer_shop_id: Int
+      payment_condition: jsonb
+      status: String
+      confirmed_at: date
+      sent_at: date
+      paid_by: Int
+      paid_at: date
+      pdf_base64: String
+      invoice_data: jsonb
+    }
+  }
+}
+```
+
