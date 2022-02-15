@@ -720,44 +720,53 @@ mutation remove_favorite_item(
 
 # カート管理
 
-## `add_cart_item($user_id, $item_id, $item_amount, $delivery_date, $sold_by)`
+## `add_cart_inventory($user_id, $inventory_id, $amount, $delivery_date, $sold_by)`
 
 【アプリ】カートに商品追加
 
 ### Query
 
 ```graphql
-mutation add_cart_item(
+mutation add_cart_inventory(
   $user_id: Int! # ユーザーID
-  $item_id: Int! # 商品ID
-  $item_amount: Int! # 商品数
+  $inventory_id: Int!
+  $amount: Int! # 商品数
   $delivery_date: date! # 配達日
 ) {
-  insert_item_cart_one(
+  insert_inventory_cart_one(
     object: {
       user_id: $user_id # ユーザーID
-      item_id: $item_id # 商品ID
-      item_amount: $item_amount # 商品数
+      inventory_id: $inventory_id # 商品ID
+      amount: $amount # 商品数
       delivery_date: $delivery_date # 追加日時
     }
   ) {
-    id
-    user_id
-    item {
-      id # 商品ID
-      name # 商品名
-      sales_unit # unit
-      inventories {
-        unit_price # 単価
+    inventory {
+      item {
+        id # 商品ID
+        name # 商品名
+        images # 画像URL
+        producer {
+          name
+          email
+          tel
+          address
+        }
+        item_favorites {
+          user_id # このアイテムが好きなuser_id
+        }
+        characteristic {
+          id
+          name
+          type
+        }
+        tax_rate
       }
-      characteristic {
-        id
-        name
-        type
-      }
-      
+      unit_price # 単価
+      ship_date
+      available_box_count
     }
-    item_amount # 商品数
+    amount # 商品数
     delivery_date # 配達日
   }
 }
@@ -768,29 +777,45 @@ mutation add_cart_item(
 ```graphql
 {
   data: {
-    insert_item_cart_one: {
+    insert_inventory_cart_one: {
       id: Int # item-cart table pk
       user_id: Int
-      item: {
-        id: String # 商品ID
-        name: String # 商品名
-        inventories: {
-          unit_price: Int # 単価
+      inventory: {
+        item: {
+          id: Int # 商品ID
+          name: String # 商品名
+          images: [String] # 画像URL
+          producer {
+            name: String # 生産者名
+          }    
+          item_favorites: {
+            user_id: Int # このアイテムが好きなuser_id
+          }
+          characteristic: {
+            id: Int
+            name: String
+            type: String
+          }
+          producer: {
+            name: String
+            email: String
+            tel: String
+            address: jsonb
+          }
+          tax_rate: Float
         }
-        characteristic: {
-          id: Int
-          name: String
-          type: String
-        }
+        unit_price: Int # 単価
+        ship_date: date
+        available_box_count: Int
       }
-      item_amount: Int # 商品数
+      amount: Int # 商品数
       delivery_date: date # 配達日
     }
   }
 }
 ```
 
-## `remove_cart_item($cart_id)`
+## `remove_cart_inventory($cart_id)`
 
 【アプリ用】カート内の商品削除
 
@@ -820,18 +845,18 @@ mutation remove_cart_item(
 }
 ```
 
-## `list_cart_items_by_user($user_id)`
+## `list_cart_inventories_by_user($user_id)`
 
 【アプリ用】カート内の商品一覧取得
 
 ### Query
 
 ```graphql
-list_cart_items_by_user (
+list_cart_inventories_by_user (
   $user_id: Int! # ユーザーID
   $delivery_date: date
 ) {
-  item_cart (
+  inventory_cart (
     where: {
       user_id: {_eq: $user_id},
       delivery_date: {_eq: $delivery_date}
@@ -842,27 +867,32 @@ list_cart_items_by_user (
   ) {
     id # item-cart table pk
     user_id
-    item {
-      id # 商品ID
-      name # 商品名
-      images # 画像URL
-      sales_unit # unit
-      inventories {
-        unit_price # 単価
+    inventory {
+      item {
+        id # 商品ID
+        name # 商品名
+        images # 画像URL 
+        item_favorites {
+          user_id # このアイテムが好きなuser_id
+        }
+        characteristic {
+          id
+          name
+          type
+        }
+        producer {
+          name
+          email
+          tel
+          address
+        }
+        tax_rate
       }
-      characteristic {
-        id
-        name
-        type
-      }
-      producer {
-        name
-        email
-        tel
-        address
-      }
+      unit_price # 単価
+      ship_date
+      available_box_count
     }
-    item_amount # 商品数
+    amount # 商品数
     delivery_date # 配達日
   }
 }
@@ -873,31 +903,39 @@ list_cart_items_by_user (
 ```graphql
 {
   data: {
-    item_cart: [
+    inventory_cart: [
       {
         id: Int # item-cart table pk
         user_id: Int # who orderd items
-        item: {
-          id: Int # 商品ID
-          name: String # 商品名
-          images: [String] # 画像URL
-          sales_unit: String # unit
-          inventories: {
-            unit_price: Int # 単価
+        inventory: {
+          id: Int # item-cart table pk
+        user_id: Int
+        inventory: {
+          item: {
+            id: Int # 商品ID
+            name: String # 商品名
+            images: [String] # 画像URL
+            item_favorites: {
+              user_id: Int # このアイテムが好きなuser_id
+            }
+            characteristic: {
+              id: Int
+              name: String
+              type: String
+            }
+            producer: {
+              name: String
+              email: String
+              tel: String
+              address: jsonb
+            }
+            tax_rate: Float
           }
-          characteristic: {
-            id: Int
-            name: String
-            type: String
-          }          
-          producer: {
-            name: String
-            email: String
-            tel: String
-            address: jsonb
-          }
+          unit_price: Int # 単価
+          ship_date: date
+          available_box_count: Int
         }
-        item_amount: Int # 商品数
+        amount: Int # 商品数
         delivery_date: date # カートに商品を追加した日時
       }
     ]
