@@ -1766,8 +1766,8 @@ get_buy_history (
     where: {
       buyer_shop_id: { _eq: $buyer_shop_id },
       sales_accept_date: { 
-        _gt: $date_from,
-        _lt: $date_to
+        _gte: $date_from,
+        _lte: $date_to
       }
     }
   ) {
