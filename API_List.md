@@ -470,6 +470,7 @@ list_items_filter_by_condition (
     },
     order_by: $order_by # 並べ替え
   ) {
+    id
     item {
       id # 商品ID
       name # 商品名
@@ -501,6 +502,7 @@ list_items_filter_by_condition (
   data: {
     inventories: [
       {
+        id
         item: {
           id: Int # 商品ID
           name: String # 商品名
@@ -564,6 +566,7 @@ list_favorite_items_by_user (
       name # 商品名
       images # 画像URL
       inventories {
+        id
         unit_price # 単価
       }
       producer {
@@ -590,6 +593,7 @@ list_favorite_items_by_user (
         name: String # 商品名
         images: jsonb # 画像URL
         inventories: {
+          id
           unit_price: Int # 単価
         }
         producer: {
@@ -742,6 +746,7 @@ mutation add_cart_inventory(
     }
   ) {
     inventory {
+      id
       item {
         id # 商品ID
         name # 商品名
@@ -781,6 +786,7 @@ mutation add_cart_inventory(
       id: Int # item-cart table pk
       user_id: Int
       inventory: {
+        id: Int
         item: {
           id: Int # 商品ID
           name: String # 商品名
@@ -868,6 +874,7 @@ list_cart_inventories_by_user (
     id # item-cart table pk
     user_id
     inventory {
+      id
       item {
         id # 商品ID
         name # 商品名
@@ -911,6 +918,7 @@ list_cart_inventories_by_user (
           id: Int # item-cart table pk
         user_id: Int
         inventory: {
+          id: Int
           item: {
             id: Int # 商品ID
             name: String # 商品名
@@ -1052,6 +1060,7 @@ get_pickup (
         images # 画像URL
         sales_unit # unit
         inventories {
+          id
           unit_price # 単価
         }
         characteristic {
@@ -1087,6 +1096,7 @@ get_pickup (
               images: jsonb # 画像URL
               sales_unit: String # unit
               inventories: {
+                id: Int
                 unit_price: Int # 単価
               }
               characteristic: {
@@ -1131,6 +1141,7 @@ get_current_pickup (
         images # 画像URL
         sales_unit # unit
         inventories {
+          id
           unit_price # 単価
         }
         characteristic {
@@ -1166,6 +1177,7 @@ get_current_pickup (
               images: jsonb # 画像URL
               sales_unit: String # unit
               inventories: {
+                id: Int
                 unit_price: Int # 単価
               }
               characteristic: {
@@ -1736,7 +1748,7 @@ get_characteristic_list (
 }
 ```
 
-## `get_buy_history($buyer_shop_id)`
+## `get_buy_history($buyer_shop_id, $date_from, $date_to)`
 
 Get buy history of a current user. (buyer_shop_id stands for org_id in users table)
 
@@ -1744,11 +1756,17 @@ Get buy history of a current user. (buyer_shop_id stands for org_id in users tab
 
 ```graphql
 get_buy_history (
-  $buyer_shop_id: Int! 
+  $buyer_shop_id: Int!
+  $date_from: timestamptz
+  $date_to: timestamptz
 ) {
   sales (
     where: {
-      buyer_shop_id: { _eq: $buyer_shop_id }
+      buyer_shop_id: { _eq: $buyer_shop_id },
+      sales_accept_date: { 
+        _gt: $date_from,
+        _lt: $date_to
+      }
     }
   ) {
     id
