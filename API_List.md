@@ -1750,19 +1750,25 @@ get_characteristic_list (
 }
 ```
 
-## `get_buy_history($buyer_shop_id)`
-x
+## `get_buy_history($buyer_shop_id, $date_from, $date_to)`
+
 Get buy history of a current user. (buyer_shop_id stands for org_id in users table)
 
 ### Query
 
 ```graphql
 get_buy_history (
-  $buyer_shop_id: Int! 
+  $buyer_shop_id: Int!
+  $date_from: timestamptz
+  $date_to: timestamptz
 ) {
   sales (
     where: {
-      buyer_shop_id: { _eq: $buyer_shop_id }
+      buyer_shop_id: { _eq: $buyer_shop_id },
+      sales_accept_date: { 
+        _gt: $date_from,
+        _lt: $date_to
+      }
     }
   ) {
     id
