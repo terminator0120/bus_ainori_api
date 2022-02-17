@@ -1767,6 +1767,7 @@ get_buy_history (
   ) {
     id
     inventory {
+      id
       item {
         id # 商品ID
         name # 商品名
@@ -1809,6 +1810,7 @@ get_buy_history (
       {
         id: Int
         inventory: {
+          id: Int
           item: {
             id: Int # 商品ID
             name: String # 商品名
