@@ -1632,7 +1632,7 @@ mutation remove_top_content(
 
 # お問い合わせ
 
-## `send_email($send_by, $name, $body, $images, $tel)`
+## `send_email($send_by, $subject, $body, $status, $images, $tel)`
 
 【アプリ用】お問い合わせメール送信
 
@@ -1641,17 +1641,19 @@ mutation remove_top_content(
 ```graphql
 mutation send_email(
   $send_by: String! # メールアドレス
-  $name: String! # お名前
+  $subject: String! # お名前
   $body: String! # 問い合わせ内容
-  $images: jsonb! # s3 bucket image path array
+  $status: Boolean!   # send status (default: false)
+  $images: Jsonb! # s3 bucket image path array
   $tel: String! # phone number
 ) {
-  insert_contacts_one(
+  insert_contacts_one (
     object: {
-      name: $name,
-      body: $body,
-      send_by: $send_by,
-      images: $images,
+      subject: $subject
+      body: $body
+      status: $status
+      send_by: $send_by
+      images: $images
       tel: $tel
     }
   ) {
@@ -1748,25 +1750,19 @@ get_characteristic_list (
 }
 ```
 
-## `get_buy_history($buyer_shop_id, $date_from, $date_to)`
-
+## `get_buy_history($buyer_shop_id)`
+x
 Get buy history of a current user. (buyer_shop_id stands for org_id in users table)
 
 ### Query
 
 ```graphql
 get_buy_history (
-  $buyer_shop_id: Int!
-  $date_from: timestamptz
-  $date_to: timestamptz
+  $buyer_shop_id: Int! 
 ) {
   sales (
     where: {
-      buyer_shop_id: { _eq: $buyer_shop_id },
-      sales_accept_date: { 
-        _gt: $date_from,
-        _lt: $date_to
-      }
+      buyer_shop_id: { _eq: $buyer_shop_id }
     }
   ) {
     id
