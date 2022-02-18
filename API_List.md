@@ -390,6 +390,7 @@ searh_items_by_keyword (
       item_favorites {
         user_id # 当商品をお気に入りしているユーザーID
       }
+      sales_unit
   }
 }
 ```
@@ -415,6 +416,7 @@ searh_items_by_keyword (
             user_id: Int # 当商品をお気に入りしているユーザーID
           }
         ]
+        sales_unit: String
       }
     ]
   }
@@ -487,6 +489,7 @@ list_items_filter_by_condition (
         type
       }
       tax_rate
+      sales_unit
     }
     unit_price # 単価
     ship_date
@@ -519,6 +522,7 @@ list_items_filter_by_condition (
             type: String
           }
           tax_rate: Float
+          sales_unit: String
         }
         unit_price: Int # 単価
         ship_date: date
@@ -577,6 +581,7 @@ list_favorite_items_by_user (
         name
         type
       }
+      sales_unit
     }
   }
 }
@@ -604,6 +609,7 @@ list_favorite_items_by_user (
           name: String
           type: String
         }
+        sales_unit: String
       }
     ]
   }
@@ -766,6 +772,7 @@ mutation add_cart_inventory(
           type
         }
         tax_rate
+        sales_unit
       }
       unit_price # 単価
       ship_date
@@ -809,6 +816,7 @@ mutation add_cart_inventory(
             address: jsonb
           }
           tax_rate: Float
+          sales_unit: String
         }
         unit_price: Int # 単価
         ship_date: date
@@ -894,6 +902,7 @@ list_cart_inventories_by_user (
           address
         }
         tax_rate
+        sales_unit
       }
       unit_price # 単価
       ship_date
@@ -938,6 +947,7 @@ list_cart_inventories_by_user (
               address: jsonb
             }
             tax_rate: Float
+            sales_unit: String
           }
           unit_price: Int # 単価
           ship_date: date
@@ -1068,6 +1078,7 @@ get_pickup (
           name
           type
         }
+        sales_unit
       }
     }
   }
@@ -1104,6 +1115,7 @@ get_pickup (
                 name: String
                 type: String
               }
+              sales_unit
             }
           }
         ]
@@ -1149,6 +1161,7 @@ get_current_pickup (
           name
           type
         }
+        sales_unit
       }
     }
   }
@@ -1185,6 +1198,7 @@ get_current_pickup (
                 name: String
                 type: String
               }
+              sales_unit: String
             }
           }
         ]
@@ -1790,8 +1804,10 @@ get_buy_history (
           type
         }
         tax_rate
+        sales_unit
       }
       unit_price # 単価
+      sales_unit
       ship_date
       available_box_count
     }
@@ -1833,8 +1849,10 @@ get_buy_history (
               type: String
             }
             tax_rate: Float
+            sales_unit: String
           }
           unit_price: Int # 単価
+          sales_unit: String
           ship_date: date
           available_box_count: Int
         }
