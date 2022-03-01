@@ -119,6 +119,9 @@ get_notification_public (
     where: {
       type: { _eq: 0 },
       readers: { _contains: $user_id}
+    },
+    order_by: {
+      sent_at: desc
     }
   ) {
     id # notifications table pk
@@ -135,6 +138,9 @@ get_notification_public (
     where: {
       type: { _eq: 0 },
       _not: { readers: { _contains: $user_id}}
+    },
+    order_by: {
+      sent_at: desc
     }
   ) {
     id # notifications table pk
@@ -347,82 +353,6 @@ mutation delete_notification (
 }
 ```
 
-<!-- # キーワード検索
-
-## `search_items_by_keyword($keyword, $order_by)`
-
-【アプリ用】 キーワードによる商品検索
-
-### Data type
-
-list_order_by
-
-```graphql
-{
-  data_field: order
-}
-# example
-# { id: asc, name: desc }
-```
-
-### Query
-
-```graphql
-searh_items_by_keyword (
-  $keyword: String! # キーワード 例）'%keyword%'
-  $order_by: list_order_by # 並べ替え（指定ないとデフォルトは id desc）
-) {
-  items (
-    where: {
-      name: { _like: $keyword } # キーワード
-    }
-    order_by: $order_by # 並べ替え
-  ) {
-      id # 商品ID
-      name # 商品名
-      images # 画像URL
-      inventories {
-        unit_price # 単価
-      }
-      producer {
-        name # 生産者名
-      }
-      item_favorites {
-        user_id # 当商品をお気に入りしているユーザーID
-      }
-      sales_unit
-  }
-}
-```
-
-### Response
-
-```graphql
-{
-  data: {
-    items: [
-      {
-        id: Int # 商品ID
-        name: String # 商品名
-        images: [String] # 画像URL
-        inventories: {
-          unit_price: Int # 単価
-        }
-        producer: {
-          name: String # 生産者名
-        }
-        item_favorites: [
-          {
-            user_id: Int # 当商品をお気に入りしているユーザーID
-          }
-        ]
-        sales_unit: String
-      }
-    ]
-  }
-} 
-```-->
-
 # 条件で絞り込み検索
 
 ## `list_items_filter_by_condition($keyword, $category, $ship_date, $address, $price_lower, $price_upper, $characteristic_id, $order_by)`
@@ -430,7 +360,7 @@ searh_items_by_keyword (
 【アプリ用】条件で絞り込み検索
 
 ### Data type
-
+ 
 items_order_by
 
 ```graphql
@@ -488,7 +418,7 @@ list_items_filter_by_condition (
         name
         type
       }
-      tax_rate
+      tax_ratez
       sales_unit
     }
     unit_price # 単価
