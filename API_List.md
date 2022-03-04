@@ -355,7 +355,7 @@ mutation delete_notification (
 
 # 条件で絞り込み検索
 
-## `list_items_filter_by_condition($keyword, $category, $ship_date, $address, $price_lower, $price_upper, $characteristic_id, $order_by)`
+## `list_items_filter_by_condition($buyer_shop_id, $keyword, $category, $ship_date, $address, $price_lower, $price_upper, $characteristic_id, $order_by)`
 
 【アプリ用】条件で絞り込み検索
 
@@ -375,55 +375,59 @@ items_order_by
 
 ```graphql
 list_items_filter_by_condition (
+  $buyer_shop_id: Int!
   $keyword: String # キーワード 例）'%keyword%'
   $category_id: Int # カテゴリーID
   $ship_date: date # 到着希望日
+  $delivery_date: date
   $address: jsonb # 産地  
   $price_lower: Int # 価格帯（低）
   $price_upper: Int # 価格帯（高）
   $characteristic_id: Int
-  $order_by: [inventories_order_by!] # 並べ替え
+  $order_by: [items_order_by!] # 並べ替え
 ) {
-  inventories (
+  items (
     where: {
-      ship_date: {_eq: $ship_date}
-      unit_price: {
-        _gt: $price_lower # 価格帯（低）
-        _lt: $price_upper # 価格帯（高）
+      name: {_like: $keyword}
+      category_id: {_eq: $category_id}
+      producer: {
+        address: {_contains: $address}
       }
-      item: {
-        name: {_like: $keyword}
-        category_id: {_eq: $category_id}
-        producer: {
-          address: {_contains: $address}
-        }
-        characteristic_id: {_eq: $characteristic_id}
-      }
+      characteristic_id: {_eq: $characteristic_id}
     },
     order_by: $order_by # 並べ替え
   ) {
-    id
-    item {
-      id # 商品ID
-      name # 商品名
-      images # 画像URL
-      producer {
-        name # 生産者名
-      }    
-      item_favorites {
-        user_id # このアイテムが好きなuser_id
-      }
-      characteristic {
-        id
-        name
-        type
-      }
-      tax_ratez
-      sales_unit
+    id # 商品ID
+    name # 商品名
+    images # 画像URL
+    producer {
+      name # 生産者名
+    }    
+    item_favorites {
+      user_id # このアイテムが好きなuser_id
     }
-    unit_price # 単価
-    ship_date
-    available_box_count
+    characteristic {  
+      id
+      name
+      type
+    }
+    tax_rate
+    sales_unit
+    available_inventories (args: {
+      buyer_shop_id: $buyer_shop_id
+    }, where: {
+      ship_date: {_eq: $ship_date},
+      delivery_date: {_eq: $delivery_date},
+      unit_price: {
+        _gte: $price_lower # 価格帯（低）
+        _lte: $price_upper # 価格帯（高）
+      }
+    }) {
+      id
+      ship_date
+      delivery_date
+      unit_price
+    }
   }
 }
 ```
@@ -433,30 +437,32 @@ list_items_filter_by_condition (
 ```graphql
 {
   data: {
-    inventories: [
+    items: [
       {
-        id
-        item: {
-          id: Int # 商品ID
-          name: String # 商品名
-          images: [String] # 画像URL
-          producer {
-            name: String # 生産者名
-          }    
-          item_favorites: {
-            user_id: Int # このアイテムが好きなuser_id
-          }
-          characteristic: {
-            id: Int
-            name: String
-            type: String
-          }
-          tax_rate: Float
-          sales_unit: String
+        id: Int # 商品ID
+        name: String # 商品名
+        images: [String] # 画像URL
+        producer {
+          name: String # 生産者名
+        }    
+        item_favorites: {
+          user_id: Int # このアイテムが好きなuser_id
         }
-        unit_price: Int # 単価
-        ship_date: date
-        available_box_count: Int
+        characteristic: {
+          id: Int
+          name: String
+          type: String
+        }
+        tax_rate: Float
+        sales_unit: String
+        available_inventories: [
+          {
+            id: Int
+            ship_date: date
+            delivery_date: date
+            unit_price: Int
+          }
+        ]
       }
     ]
   }
@@ -465,7 +471,7 @@ list_items_filter_by_condition (
 
 # お気に入り
 
-## `list_favorite_items_by_user($user_id, $order_by)`
+## `list_favorite_items_by_user($user_id, $buyer_shop_id, $order_by)`
 
 【アプリ・管理画面用】ユーザーのお気に入り一覧取得
 
@@ -486,7 +492,8 @@ item_favorite_order_by
 
 ```graphql
 list_favorite_items_by_user (
-  $user_id: Int! # ユーザーID  
+  $user_id: Int! # ユーザーID 
+  $buyer_shop_id: Int!
   $order_by: [item_favorite_order_by!] # 並べ替え
 ) {
   item_favorite (
@@ -499,9 +506,15 @@ list_favorite_items_by_user (
       id # 商品ID
       name # 商品名
       images # 画像URL
-      inventories {
+      available_inventories (
+        args: {
+          buyer_shop_id: $buyer_shop_id
+        }
+      ) {
         id
-        unit_price # 単価
+        ship_date
+        delivery_date
+        unit_price
       }
       producer {
         name # 生産者名
@@ -527,9 +540,11 @@ list_favorite_items_by_user (
         id: Int # 商品ID
         name: String # 商品名
         images: jsonb # 画像URL
-        inventories: {
-          id
-          unit_price: Int # 単価
+        avaiable_inventories: {
+          id: Int
+          ship_date: date
+          delivery_date: date
+          unit_price: Int
         }
         producer: {
           name: String # 生産者名
@@ -660,7 +675,7 @@ mutation remove_favorite_item(
 
 # カート管理
 
-## `add_cart_inventory($user_id, $inventory_id, $amount, $delivery_date, $sold_by)`
+## `add_cart_inventory($user_id, $item_id, $amount, $buyer_shop_id)`
 
 【アプリ】カートに商品追加
 
@@ -669,47 +684,47 @@ mutation remove_favorite_item(
 ```graphql
 mutation add_cart_inventory(
   $user_id: Int! # ユーザーID
-  $inventory_id: Int!
+  $item_id: Int!
   $amount: Int! # 商品数
-  $delivery_date: date! # 配達日
+  $buyer_shop_id: Int!
 ) {
-  insert_inventory_cart_one(
+  insert_inventory_cart_one (
     object: {
       user_id: $user_id # ユーザーID
-      inventory_id: $inventory_id # 商品ID
+      item_id: $item_id # 商品ID
       amount: $amount # 商品数
-      delivery_date: $delivery_date # 追加日時
     }
   ) {
-    inventory {
-      id
-      item {
-        id # 商品ID
-        name # 商品名
-        images # 画像URL
-        producer {
-          name
-          email
-          tel
-          address
-        }
-        item_favorites {
-          user_id # このアイテムが好きなuser_id
-        }
-        characteristic {
-          id
-          name
-          type
-        }
-        tax_rate
-        sales_unit
+    item {
+      id # 商品ID
+      name # 商品名
+      images # 画像URL
+      producer {
+        name
+        email
+        tel
+        address
       }
-      unit_price # 単価
-      ship_date
-      available_box_count
+      item_favorites {
+        user_id # このアイテムが好きなuser_id
+      }
+      characteristic {
+        id
+        name
+        type
+      }
+      tax_rate
+      sales_unit
+      available_inventories (args: {
+        buyer_shop_id: $buyer_shop_id
+      }) {
+        id
+        ship_date
+        delivery_date
+        unit_price
+      }
     }
-    amount # 商品数
-    delivery_date # 配達日
+    amount
   }
 }
 ```
@@ -720,40 +735,39 @@ mutation add_cart_inventory(
 {
   data: {
     insert_inventory_cart_one: {
-      id: Int # item-cart table pk
-      user_id: Int
-      inventory: {
-        id: Int
-        item: {
-          id: Int # 商品ID
-          name: String # 商品名
-          images: [String] # 画像URL
-          producer {
-            name: String # 生産者名
-          }    
-          item_favorites: {
-            user_id: Int # このアイテムが好きなuser_id
-          }
-          characteristic: {
-            id: Int
-            name: String
-            type: String
-          }
-          producer: {
-            name: String
-            email: String
-            tel: String
-            address: jsonb
-          }
-          tax_rate: Float
-          sales_unit: String
+      item: {
+        id: Int # 商品ID
+        name: String # 商品名
+        images: [String] # 画像URL
+        producer {
+          name: String # 生産者名
+        }    
+        item_favorites: {
+          user_id: Int # このアイテムが好きなuser_id
         }
-        unit_price: Int # 単価
-        ship_date: date
-        available_box_count: Int
+        characteristic: {
+          id: Int
+          name: String
+          type: String
+        }
+        producer: {
+          name: String
+          email: String
+          tel: String
+          address: jsonb
+        }
+        tax_rate: Float
+        sales_unit: String
+        available_inventories: [
+          {
+            id: Int
+            ship_date: date
+            delivery_date: date
+            unit_price: Int
+          }
+        ]
       }
-      amount: Int # 商品数
-      delivery_date: date # 配達日
+      amount : Int # 商品数
     }
   }
 }
@@ -766,10 +780,10 @@ mutation add_cart_inventory(
 ### Query
 
 ```graphql
-mutation remove_cart_item(
+mutation remove_cart_inventory(
   $cart_id: Int! # PK of `item_cart` table
 ) {
-  delete_item_cart(
+  delete_inventory_cart(
     where: {
       id: { _eq: $cart_id } # PK of `item_cart` table
     }
@@ -789,7 +803,7 @@ mutation remove_cart_item(
 }
 ```
 
-## `list_cart_inventories_by_user($user_id)`
+## `list_cart_inventories_by_user($user_id, $buyer_shop_id, $delivery_date)`
 
 【アプリ用】カート内の商品一覧取得
 
@@ -798,9 +812,10 @@ mutation remove_cart_item(
 ```graphql
 list_cart_inventories_by_user (
   $user_id: Int! # ユーザーID
+  $buyer_shop_id: Int!
   $delivery_date: date
 ) {
-  inventory_cart (
+  item_cart (
     where: {
       user_id: {_eq: $user_id},
       delivery_date: {_eq: $delivery_date}
@@ -811,35 +826,36 @@ list_cart_inventories_by_user (
   ) {
     id # item-cart table pk
     user_id
-    inventory {
-      id
-      item {
-        id # 商品ID
-        name # 商品名
-        images # 画像URL 
-        item_favorites {
-          user_id # このアイテムが好きなuser_id
-        }
-        characteristic {
-          id
-          name
-          type
-        }
-        producer {
-          name
-          email
-          tel
-          address
-        }
-        tax_rate
-        sales_unit
+    item {
+      id # 商品ID
+      name # 商品名
+      images # 画像URL 
+      item_favorites {
+        user_id # このアイテムが好きなuser_id
       }
-      unit_price # 単価
-      ship_date
-      available_box_count
+      characteristic {
+        id
+        name
+        type
+      }
+      producer {
+        name
+        email
+        tel
+        address
+      }
+      tax_rate
+      sales_unit
+      available_inventories (args: {
+        buyer_shop_id: $buyer_shop_id
+      }) {
+        id
+        ship_date
+        delivery_date
+        unit_price
+      }
     }
     amount # 商品数
-    delivery_date # 配達日
   }
 }
 ```
@@ -849,42 +865,39 @@ list_cart_inventories_by_user (
 ```graphql
 {
   data: {
-    inventory_cart: [
+    item_cart: [
       {
         id: Int # item-cart table pk
         user_id: Int # who orderd items
-        inventory: {
-          id: Int # item-cart table pk
-        user_id: Int
-        inventory: {
-          id: Int
-          item: {
-            id: Int # 商品ID
-            name: String # 商品名
-            images: [String] # 画像URL
-            item_favorites: {
-              user_id: Int # このアイテムが好きなuser_id
-            }
-            characteristic: {
-              id: Int
-              name: String
-              type: String
-            }
-            producer: {
-              name: String
-              email: String
-              tel: String
-              address: jsonb
-            }
-            tax_rate: Float
-            sales_unit: String
+        item: {
+          id: Int # 商品ID
+          name: String # 商品名
+          images: [String] # 画像URL
+          item_favorites: {
+            user_id: Int # このアイテムが好きなuser_id
           }
-          unit_price: Int # 単価
-          ship_date: date
-          available_box_count: Int
-        }
+          characteristic: {
+            id: Int
+            name: String
+            type: String
+          }
+          producer: {
+            name: String
+            email: String
+            tel: String
+            address: jsonb
+          }
+          tax_rate: Float
+          sales_unit: String
+          available_inventories: [
+            {
+              id: Int
+              ship_date: date
+              delivery_date: date
+              unit_price: Int
+            }
+          ]
         amount: Int # 商品数
-        delivery_date: date # カートに商品を追加した日時
       }
     ]
   }
@@ -971,7 +984,7 @@ mutation add_pickup(
 }
 ```
 
-## `get_pickup($pickup_id)`
+## `get_pickup($buyer_shop_id, $pickup_id)`
 
 【アプリ・管理画面用】ID によるピックアップ取得
 
@@ -979,6 +992,7 @@ mutation add_pickup(
 
 ```graphql
 get_pickup (
+  $buyer_shop_id: Int!
   $pickup_id: Int
 ) {
   pickups (
@@ -999,9 +1013,13 @@ get_pickup (
         name # 商品名
         images # 画像URL
         sales_unit # unit
-        inventories {
+        available_inventories (args: {
+          buyer_shop_id: $buyer_shop_id
+        }) {
           id
-          unit_price # 単価
+          ship_date
+          delivery_date
+          unit_price
         }
         characteristic {
           id
@@ -1036,16 +1054,20 @@ get_pickup (
               name: String # 商品名
               images: jsonb # 画像URL
               sales_unit: String # unit
-              inventories: {
-                id: Int
-                unit_price: Int # 単価
-              }
+              available_inventories: [
+                {
+                  id: Int
+                  ship_date: date
+                  delivery_date: date
+                  unit_price: Int
+                }
+              ]
               characteristic: {
                 id: Int
                 name: String
                 type: String
               }
-              sales_unit
+              sales_unit: Int
             }
           }
         ]
@@ -1055,7 +1077,7 @@ get_pickup (
 }
 ```
 
-## `get_current_pickup($current_date)`
+## `get_current_pickup($buyer_shop_id, $current_date)`
 
 【アプリ・管理画面用】該当日時が到来しているピックアップのうち、最も新しいものを取得
 
@@ -1063,6 +1085,7 @@ get_pickup (
 
 ```graphql
 get_current_pickup (
+  $buyer_shop_id: Int!
   $current_date: date! #基準日時
 ) {
   pickups (
@@ -1092,6 +1115,14 @@ get_current_pickup (
           type
         }
         sales_unit
+        available_inventories (args: {
+          buyer_shop_id: $buyer_shop_id
+        }) {
+          id
+          ship_date
+          delivery_date
+          unit_price
+        }
       }
     }
   }
@@ -1128,6 +1159,14 @@ get_current_pickup (
                 name: String
                 type: String
               }
+              available_inventories: [
+                {                  
+                  id: Int
+                  ship_date: date
+                  delivery_date: date
+                  unit_price: Int
+                }
+              ]
               sales_unit: String
             }
           }
@@ -1735,10 +1774,15 @@ get_buy_history (
         }
         tax_rate
         sales_unit
+        available_inventories (args: {
+          buyer_shop_id: $buyer_shop_id
+        }) {          
+          id
+          ship_date
+          delivery_date
+          unit_price
+        }
       }
-      unit_price # 単価
-      sales_unit
-      ship_date
       available_box_count
     }
     sales_unit_count
@@ -1780,10 +1824,14 @@ get_buy_history (
             }
             tax_rate: Float
             sales_unit: String
+            avaiable_inventories: [
+              {
+                ship_date: date
+                delivery_date: date
+                unit_price: Int
+              }
+            ]
           }
-          unit_price: Int # 単価
-          sales_unit: String
-          ship_date: date
           available_box_count: Int
         }
         sales_unit_count: Int
